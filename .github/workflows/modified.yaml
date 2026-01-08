@@ -1,0 +1,72 @@
+name: package
+
+# CINTENT >> MANUAL_TRIGGER
+# on:
+#   push:
+#     branches:
+#       - master
+#   pull_request:
+#     branches:
+#       - '**'
+on: [repository_dispatch, workflow_dispatch]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      max-parallel: 4
+      matrix:
+        include:
+          # CINTENT >> REMOVE_MATRIX
+          # - python: 3.8
+          #   torch: 1.11.0
+          #   torchaudio: 0.11.0
+          - python: 3.11
+            torch: 2.2.1
+            torchaudio: 2.2.1
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v4
+
+      # CINTENT >> INSERT_CINTENT
+      - uses: JavidDitty/setup-cintent@a606c80c34ec190c6a20dea33d6d58ddb6c4e0cc
+
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          architecture: x64
+
+      - name: Dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -qq -y libsndfile1
+
+      - name: Install
+        run: make PYTHON_VERSION=${{ matrix.python }} TORCH_VERSION=${{ matrix.torch }} TORCHAUDIO_VERSION=${{ matrix.torchaudio }} PLATFORM=cpu dev tool
+
+      - name: Check
+        run: make check
+
+      - name: Test
+        run: make test
+
+      # CINTENT >> REMOVE_UPLOADS
+      # - name: Coverage
+      #   uses: codecov/codecov-action@v3
+      #   with:
+      #     fail_ci_if_error: true
+      #     files: ./coverage.xml
+      #     flags: unittests
+      #     name: codecov-umbrella
+      #     verbose: true
+
+      # CINTENT >> INSERT_CINTENT
+      - name: Upload CIntent Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ env.CINTENT_ARTIFACT_NAME }}
+          path: ${{ env.CINTENT_LOGS }}
